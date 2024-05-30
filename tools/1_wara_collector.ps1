@@ -28,10 +28,11 @@ Param(
 
 if ($Debugging.IsPresent) { $DebugPreference = 'Continue' } else { $DebugPreference = "silentlycontinue" }
 
-$Script:ShellPlatform = $PSVersionTable.Platform
+$ShellPlatform = $PSVersionTable.Platform
 
-$Script:Runtime = Measure-Command -Expression {
+$Runtime = Measure-Command -Expression {
 
+  # TODO: Remove this function and add the proper validation set to cmdlet bindings
   function Test-SubscriptionParameter {
     if ([string]::IsNullOrEmpty($SubscriptionIds) -and [string]::IsNullOrEmpty($SubscriptionsFile))
       {
@@ -42,6 +43,7 @@ $Script:Runtime = Measure-Command -Expression {
       }
   }
 
+  # TODO: Remove this function and add proper help messages to the modules and the script itself
   function Get-HelpMessage {
     Write-Host ""
     Write-Host "Parameters"
@@ -66,6 +68,7 @@ $Script:Runtime = Measure-Command -Expression {
     Write-Host ""
   }
 
+# TODO: Remove this function. We should be using parameters to pass values and not need them to be
   function Invoke-ResetVariable {
     $Script:SubIds = ''
     $Script:RunbookChecks = @{}
@@ -897,7 +900,7 @@ $Script:Runtime = Measure-Command -Expression {
     $Looper = $Script:AllResourceTypes | Select-Object -Property type,subscriptionId -Unique
     foreach ($result in $Looper)
       {
-        if(($Script:AllResourceTypes | Where-Object {$_.type -eq $result.type -and $_.SubscriptionId -eq $result.subscriptionId}).count -eq 1) 
+        if(($Script:AllResourceTypes | Where-Object {$_.type -eq $result.type -and $_.SubscriptionId -eq $result.subscriptionId}).count -eq 1)
           {
             $ResourceTypeCount = ($Script:AllResourceTypes | Where-Object {$_.type -eq $result.type -and $_.SubscriptionId -eq $result.subscriptionId}).count_
           }
