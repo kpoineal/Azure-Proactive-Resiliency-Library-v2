@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# APRL Folder when test running collector script
+/tools/Azure-Proactive-Resiliency-Library-v2/
+rg.txt
+
 # User-specific files
 *.rsuser
 *.suo

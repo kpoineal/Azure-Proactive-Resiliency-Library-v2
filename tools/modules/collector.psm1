@@ -29,6 +29,20 @@ Function Get-AllAzGraphResources {
   return $allResources
 }
 
+function get-allresourcegroups {
+
+  # Query to get all resource groups in the tenant
+  $q = "resourcecontainers
+  | where type == 'microsoft.resources/subscriptions'
+  | project subscriptionId, subscriptionName = name
+  | join (resourcecontainers
+      | where type == 'microsoft.resources/subscriptions/resourcegroups')
+      on subscriptionId
+  | project subscriptionName, subscriptionId, resourceGroup, id=tolower(id)"
+
+  return Get-AllAzGraphResources -query $q
+}
+
 function Get-ResourceGroupsByList {
   param (
       [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
