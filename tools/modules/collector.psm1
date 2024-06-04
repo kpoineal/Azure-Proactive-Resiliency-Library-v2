@@ -29,6 +29,29 @@ Function Get-AllAzGraphResources {
   return $allResources
 }
 
+function Get-ResourceGroupsByList {
+  param (
+      [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
+      [array]$ObjectList,
+
+      [Parameter(Mandatory=$true)]
+      [array]$FilterList,
+
+      [Parameter(Mandatory=$true)]
+      [string]$KeyColumn
+  )
+
+  $matchingObjects = @()
+
+  foreach ($obj in $ObjectList) {
+      if (($obj.$KeyColumn.split("/")[0..4] -join "/") -in $FilterList) {
+          $matchingObjects += $obj
+      }
+  }
+
+  return $matchingObjects
+}
+
 
 
 

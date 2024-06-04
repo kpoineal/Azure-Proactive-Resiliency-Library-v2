@@ -34,6 +34,10 @@ $Script:ShellPlatform = $PSVersionTable.Platform
 
 $Script:Runtime = Measure-Command -Expression {
 
+  if($ResourceGroups){
+    $ResourceGroupList = (Get-Content $ResourceGroups).trim().tolower()
+  }
+
   function Test-SubscriptionParameter {
     if ([string]::IsNullOrEmpty($SubscriptionIds) -and [string]::IsNullOrEmpty($SubscriptionsFile))
       {
@@ -1237,6 +1241,12 @@ $Script:Runtime = Measure-Command -Expression {
       }
 
       $ExporterArray = @()
+
+      # If ResourceGroups are defined, we need to filter the ResourceExporter
+      if($ResourceGroups){
+        $ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -parameter "id"
+      }
+
       $ExporterArray += $ResourceExporter
       $ExporterArray += $ResourceTypeExporter
       $ExporterArray += $AdvisoryExporter
