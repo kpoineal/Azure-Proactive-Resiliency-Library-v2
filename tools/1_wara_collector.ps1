@@ -10,21 +10,23 @@ https://github.com/Azure/Azure-Proactive-Resiliency-Library-v2
 
 #>
 
-Param(
-  [switch]$Debugging,
-  [switch]$Help,
-  [switch]$SAP,
-  [switch]$AVD,
-  [switch]$AVS,
-  [switch]$HPC,
-  $RunbookFile,
-  $SubscriptionsFile,
-  $SubscriptionIds,
-  $ResourceGroups,
-  $TenantID,
-  [ValidateSet("AzureCloud","AzureUSGovernment")]
-  $AzureEnvironment = 'AzureCloud'
-  )
+param (
+    [switch]$Debugging,
+    [switch]$Help,
+    [switch]$SAP,
+    [switch]$AVD,
+    [switch]$AVS,
+    [switch]$HPC,
+    $RunbookFile,
+    $SubscriptionsFile,
+    $SubscriptionIds,
+    $ResourceGroups,
+    $TenantID,
+    [ValidateSet("AzureCloud", "AzureUSGovernment")]
+    $AzureEnvironment = "AzureCloud"
+)
+
+import-module ".\modules\collector.psm1" -Force
 
 if ($Debugging.IsPresent) { $DebugPreference = 'Continue' } else { $DebugPreference = "silentlycontinue" }
 
@@ -32,46 +34,20 @@ $Script:ShellPlatform = $PSVersionTable.Platform
 
 $Script:Runtime = Measure-Command -Expression {
 
-  function Test-SubscriptionParameter {
-    if ([string]::IsNullOrEmpty($SubscriptionIds) -and [string]::IsNullOrEmpty($SubscriptionsFile))
-      {
-        Write-Host ""
-        Write-Host "Suscription ID or Subscription File is required"
-        Write-Host ""
-        Exit
-      }
+  if($ResourceGroups){
+    $ResourceGroupList = (Get-Content $ResourceGroups).trim().tolower()
   }
+  Write-Host "Subscription ID is $SubscriptionIds"
 
-  Function Get-AllAzGraphResources {
-    param (
-      [string]$subscriptionId,
-      [string]$query = 'Resources | project id, resourceGroup, subscriptionId, name, type, location, properties'
-    )
-
-    if ([bool]$subscriptionId) {
-      $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -Subscription $subscriptionId -First 1000
-    } else {
-      $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -first 1000
-    } # -first 1000 returns the first 1000 results and subsequently reduces the amount of queries required to get data.
-
-    # Collection to store all resources
-    $allResources = @($result)
-
-    # Loop to paginate through the results using the skip token
-    while ($result.SkipToken) {
-      # Retrieve the next set of results using the skip token
-      if ([bool]$subscriptionId) {
-        $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -Subscription $subscriptionId -First 1000
-      } else {
-        $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -First 1000
-      }
-      # Add the results to the collection
-      $allResources += $result
+   function Test-SubscriptionParameter {
+    if ([string]::IsNullOrEmpty($SubscriptionIds) -and [string]::IsNullOrEmpty($SubscriptionsFile)) {
+      Write-Host ''
+      Write-Host 'Suscription ID or Subscription File is required'
+      Write-Host ''
+      #Exit
     }
-
-    # Output all resources
-    return $allResources
   }
+
 
   function Get-HelpMessage {
     Write-Host ""
@@ -238,7 +214,7 @@ $Script:Runtime = Measure-Command -Expression {
 
   function Connect-ToAzure {
     # Connect To Azure Tenant
-    Write-Host "Authenticating to Azure"
+    <#Write-Host "Authenticating to Azure"
     if ($Script:ShellPlatform -eq 'Win32NT')
       {
         Clear-AzContext -Force -ErrorAction SilentlyContinue -WarningAction SilentlyContinue -InformationAction SilentlyContinue
@@ -276,7 +252,9 @@ $Script:Runtime = Measure-Command -Expression {
       {
         Connect-AzAccount -Identity -Environment $AzureEnvironment
         $Script:SubIds = Get-AzSubscription -WarningAction SilentlyContinue
-      }
+      }#>
+
+    $Script:SubIds = Get-AzSubscription -TenantId $TenantID -WarningAction SilentlyContinue
 
     # Getting Outages
     Write-Debug "Exporting Outages"
@@ -293,7 +271,7 @@ $Script:Runtime = Measure-Command -Expression {
     }
     foreach ($sub in $SubscriptionIds)
       {
-        Select-AzSubscription -Subscription $sub -WarningAction SilentlyContinue -InformationAction SilentlyContinue | Out-Null
+        Set-AzContext -Subscription $sub -WarningAction SilentlyContinue -InformationAction SilentlyContinue | Out-Null
 
         $Token = Get-AzAccessToken
 
@@ -590,7 +568,8 @@ $Script:Runtime = Measure-Command -Expression {
                 $resultAllResourceTypes = @()
                 foreach ($RG in $ResourceGroups)
                   {
-                    $resultAllResourceTypes += Search-AzGraph -Query "resources | where resourceGroup =~ '$RG' | summarize count() by type, subscriptionId" -Subscription $Subid
+                    $RG = $RG.split("/")[4]
+                    $resultAllResourceTypes = Search-AzGraph -Query "resources | where resourceGroup contains '$RG' | summarize count() by type, subscriptionId" -Subscription $Subid
                   }
                 $Script:AllResourceTypes += $resultAllResourceTypes
               }
@@ -844,13 +823,13 @@ $Script:Runtime = Measure-Command -Expression {
                 Write-Host " +++++++++++++++"
 
                 # Validating if Query is Under Development
-                if ($query -match "development")
+                if ($query -match "^//.*(under-development)")
                   {
                     Write-Host "Query $checkId under development - Validate Recommendation manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
                     Invoke-QueryExecution -Subid $Subid -type $type -query $query -checkId $checkId -checkName $checkName -validationAction 'IMPORTANT - Query under development - Validate Recommendation manually'
                   }
-                elseif ($query -match "cannot-be-validated-with-arg")
+                elseif ($query -match "^//.*(cannot-be)")
                   {
                     Write-Host "IMPORTANT - Recommendation $checkId cannot be validated with ARGs - Validate Resources manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
@@ -1265,6 +1244,12 @@ $Script:Runtime = Measure-Command -Expression {
       }
 
       $ExporterArray = @()
+
+      # If ResourceGroups are defined, we need to filter the ResourceExporter
+      #if($ResourceGroups){
+       #$ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -KeyColumn "id"
+      #}
+
       $ExporterArray += $ResourceExporter
       $ExporterArray += $ResourceTypeExporter
       $ExporterArray += $AdvisoryExporter
