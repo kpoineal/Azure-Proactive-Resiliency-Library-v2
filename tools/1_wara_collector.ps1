@@ -823,13 +823,13 @@ $Script:Runtime = Measure-Command -Expression {
                 Write-Host " +++++++++++++++"
 
                 # Validating if Query is Under Development
-                if ($query -match "^//.*(under-development)")
+                if ($query -match "under-development")
                   {
                     Write-Host "Query $checkId under development - Validate Recommendation manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
                     Invoke-QueryExecution -Subid $Subid -type $type -query $query -checkId $checkId -checkName $checkName -validationAction 'IMPORTANT - Query under development - Validate Recommendation manually'
                   }
-                elseif ($query -match "^//.*(cannot-be)")
+                elseif ($query -match "cannot-be-validated-with-arg")
                   {
                     Write-Host "IMPORTANT - Recommendation $checkId cannot be validated with ARGs - Validate Resources manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
@@ -1246,9 +1246,9 @@ $Script:Runtime = Measure-Command -Expression {
       $ExporterArray = @()
 
       # If ResourceGroups are defined, we need to filter the ResourceExporter
-      #if($ResourceGroups){
-       #$ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -KeyColumn "id"
-      #}
+      if($ResourceGroups){
+       $ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -KeyColumn "id"
+      }
 
       $ExporterArray += $ResourceExporter
       $ExporterArray += $ResourceTypeExporter
