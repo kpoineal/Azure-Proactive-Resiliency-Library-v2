@@ -10,23 +10,23 @@ https://github.com/Azure/Azure-Proactive-Resiliency-Library-v2
 
 #>
 
-import-module .\modules\collector.psm1 -Force
+param (
+    [switch]$Debugging,
+    [switch]$Help,
+    [switch]$SAP,
+    [switch]$AVD,
+    [switch]$AVS,
+    [switch]$HPC,
+    $RunbookFile,
+    $SubscriptionsFile,
+    $SubscriptionIds,
+    $ResourceGroups,
+    $TenantID,
+    [ValidateSet("AzureCloud", "AzureUSGovernment")]
+    $AzureEnvironment = "AzureCloud"
+)
 
-Param(
-  [switch]$Debugging,
-  [switch]$Help,
-  [switch]$SAP,
-  [switch]$AVD,
-  [switch]$AVS,
-  [switch]$HPC,
-  $RunbookFile,
-  $SubscriptionsFile,
-  $SubscriptionIds,
-  $ResourceGroups,
-  $TenantID,
-  [ValidateSet("AzureCloud","AzureUSGovernment")]
-  $AzureEnvironment = 'AzureCloud'
-  )
+import-module ".\modules\collector.psm1" -Force
 
 if ($Debugging.IsPresent) { $DebugPreference = 'Continue' } else { $DebugPreference = "silentlycontinue" }
 
@@ -37,15 +37,15 @@ $Script:Runtime = Measure-Command -Expression {
   if($ResourceGroups){
     $ResourceGroupList = (Get-Content $ResourceGroups).trim().tolower()
   }
+  Write-Host "Subscription ID is $SubscriptionIds"
 
-  function Test-SubscriptionParameter {
-    if ([string]::IsNullOrEmpty($SubscriptionIds) -and [string]::IsNullOrEmpty($SubscriptionsFile))
-      {
-        Write-Host ""
-        Write-Host "Suscription ID or Subscription File is required"
-        Write-Host ""
-        Exit
-      }
+   function Test-SubscriptionParameter {
+    if ([string]::IsNullOrEmpty($SubscriptionIds) -and [string]::IsNullOrEmpty($SubscriptionsFile)) {
+      Write-Host ''
+      Write-Host 'Suscription ID or Subscription File is required'
+      Write-Host ''
+      #Exit
+    }
   }
 
 
@@ -214,7 +214,7 @@ $Script:Runtime = Measure-Command -Expression {
 
   function Connect-ToAzure {
     # Connect To Azure Tenant
-    Write-Host "Authenticating to Azure"
+    <#Write-Host "Authenticating to Azure"
     if ($Script:ShellPlatform -eq 'Win32NT')
       {
         Clear-AzContext -Force -ErrorAction SilentlyContinue -WarningAction SilentlyContinue -InformationAction SilentlyContinue
@@ -252,7 +252,9 @@ $Script:Runtime = Measure-Command -Expression {
       {
         Connect-AzAccount -Identity -Environment $AzureEnvironment
         $Script:SubIds = Get-AzSubscription -WarningAction SilentlyContinue
-      }
+      }#>
+
+    $Script:SubIds = Get-AzSubscription -TenantId $TenantID -WarningAction SilentlyContinue
 
     # Getting Outages
     Write-Debug "Exporting Outages"
@@ -269,7 +271,7 @@ $Script:Runtime = Measure-Command -Expression {
     }
     foreach ($sub in $SubscriptionIds)
       {
-        Select-AzSubscription -Subscription $sub -WarningAction SilentlyContinue -InformationAction SilentlyContinue | Out-Null
+        Set-AzContext -Subscription $sub -WarningAction SilentlyContinue -InformationAction SilentlyContinue | Out-Null
 
         $Token = Get-AzAccessToken
 
@@ -566,7 +568,8 @@ $Script:Runtime = Measure-Command -Expression {
                 $resultAllResourceTypes = @()
                 foreach ($RG in $ResourceGroups)
                   {
-                    $resultAllResourceTypes += Search-AzGraph -Query "resources | where resourceGroup =~ '$RG' | summarize count() by type, subscriptionId" -Subscription $Subid
+                    $RG = $RG.split("/")[4]
+                    $resultAllResourceTypes = Search-AzGraph -Query "resources | where resourceGroup contains '$RG' | summarize count() by type, subscriptionId" -Subscription $Subid
                   }
                 $Script:AllResourceTypes += $resultAllResourceTypes
               }
@@ -820,13 +823,13 @@ $Script:Runtime = Measure-Command -Expression {
                 Write-Host " +++++++++++++++"
 
                 # Validating if Query is Under Development
-                if ($query -match "^//.*(under|development)")
+                if ($query -match "^//.*(under-development)")
                   {
                     Write-Host "Query $checkId under development - Validate Recommendation manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
                     Invoke-QueryExecution -Subid $Subid -type $type -query $query -checkId $checkId -checkName $checkName -validationAction 'IMPORTANT - Query under development - Validate Recommendation manually'
                   }
-                elseif ($query -match "^//.*(cannot)")
+                elseif ($query -match "^//.*(cannot-be)")
                   {
                     Write-Host "IMPORTANT - Recommendation $checkId cannot be validated with ARGs - Validate Resources manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
@@ -1243,9 +1246,9 @@ $Script:Runtime = Measure-Command -Expression {
       $ExporterArray = @()
 
       # If ResourceGroups are defined, we need to filter the ResourceExporter
-      if($ResourceGroups){
-        $ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -parameter "id"
-      }
+      #if($ResourceGroups){
+       #$ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -KeyColumn "id"
+      #}
 
       $ExporterArray += $ResourceExporter
       $ExporterArray += $ResourceTypeExporter

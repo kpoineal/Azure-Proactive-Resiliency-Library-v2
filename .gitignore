@@ -6,6 +6,8 @@
 # APRL Folder when test running collector script
 /tools/Azure-Proactive-Resiliency-Library-v2/
 rg.txt
+sub.txt
+scope.txt
 
 # User-specific files
 *.rsuser
