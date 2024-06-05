@@ -26,8 +26,6 @@ param (
     $AzureEnvironment = "AzureCloud"
 )
 
-import-module ".\modules\collector.psm1" -Force
-
 if ($Debugging.IsPresent) { $DebugPreference = 'Continue' } else { $DebugPreference = "silentlycontinue" }
 
 $Script:ShellPlatform = $PSVersionTable.Platform
@@ -37,6 +35,7 @@ $Script:Runtime = Measure-Command -Expression {
   if($ResourceGroups){
     $ResourceGroupList = (Get-Content $ResourceGroups).trim().tolower()
   }
+
   Write-Host "Subscription ID is $SubscriptionIds"
 
    function Test-SubscriptionParameter {
@@ -47,6 +46,78 @@ $Script:Runtime = Measure-Command -Expression {
       #Exit
     }
   }
+
+  Function Get-AllAzGraphResources {
+    param (
+      [string]$subscriptionId,
+      [string]$query = 'Resources | project id, resourceGroup, subscriptionId, name, type, location, properties'
+    )
+
+    if ([bool]$subscriptionId) {
+      $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -Subscription $subscriptionId -First 1000
+    } else {
+      $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -first 1000
+    } # -first 1000 returns the first 1000 results and subsequently reduces the amount of queries required to get data.
+
+    # Collection to store all resources
+    $allResources = @($result)
+
+    # Loop to paginate through the results using the skip token
+    while ($result.SkipToken) {
+      # Retrieve the next set of results using the skip token
+      if ([bool]$subscriptionId) {
+        $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -Subscription $subscriptionId -First 1000
+      } else {
+        $result = Search-AzGraph -Query $query -SkipToken $result.SkipToken -First 1000
+      }
+      # Add the results to the collection
+      $allResources += $result
+    }
+
+    # Output all resources
+    return $allResources
+  }
+
+  function get-allresourcegroups {
+
+    # Query to get all resource groups in the tenant
+    $q = "resourcecontainers
+    | where type == 'microsoft.resources/subscriptions'
+    | project subscriptionId, subscriptionName = name
+    | join (resourcecontainers
+        | where type == 'microsoft.resources/subscriptions/resourcegroups')
+        on subscriptionId
+    | project subscriptionName, subscriptionId, resourceGroup, id=tolower(id)"
+
+    return Get-AllAzGraphResources -query $q
+  }
+
+  function Get-ResourceGroupsByList {
+    param (
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
+        [array]$ObjectList,
+
+        [Parameter(Mandatory=$true)]
+        [array]$FilterList,
+
+        [Parameter(Mandatory=$true)]
+        [string]$KeyColumn
+    )
+
+    $matchingObjects = @()
+
+    foreach ($obj in $ObjectList) {
+        if (($obj.$KeyColumn.split("/")[0..4] -join "/") -in $FilterList) {
+            $matchingObjects += $obj
+        }
+    }
+
+    return $matchingObjects
+  }
+
+
+
+
 
 
   function Get-HelpMessage {
@@ -823,13 +894,13 @@ $Script:Runtime = Measure-Command -Expression {
                 Write-Host " +++++++++++++++"
 
                 # Validating if Query is Under Development
-                if ($query -match "under-development")
+                if ($query -match "development")
                   {
                     Write-Host "Query $checkId under development - Validate Recommendation manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
                     Invoke-QueryExecution -Subid $Subid -type $type -query $query -checkId $checkId -checkName $checkName -validationAction 'IMPORTANT - Query under development - Validate Recommendation manually'
                   }
-                elseif ($query -match "cannot-be-validated-with-arg")
+                  elseif ($query -match "cannot-be-validated-with-arg")
                   {
                     Write-Host "IMPORTANT - Recommendation $checkId cannot be validated with ARGs - Validate Resources manually" -ForegroundColor Yellow
                     $query = "resources | where type =~ '$type' | project name,id"
@@ -1247,7 +1318,9 @@ $Script:Runtime = Measure-Command -Expression {
 
       # If ResourceGroups are defined, we need to filter the ResourceExporter
       if($ResourceGroups){
-       $ResourceExporter = Get-ResourceGroupsByList -ObjectList $ResourceExporter -FilterList $ResourceGroupList -KeyColumn "id"
+        $ResourceExporter = @{
+          Resource = Get-ResourceGroupsByList -ObjectList $script:results -FilterList $ResourceGroupList -KeyColumn "id"
+        }
       }
 
       $ExporterArray += $ResourceExporter
