@@ -921,7 +921,7 @@ $Script:Runtime = Measure-Command -Expression {
                 foreach ($result in $TempResult)
                   {
                     $res = $result.id.split('/')
-                    if ($res[4] -in $ResourceGroups)
+                    if ($res[4] -in $ResourceGroupList)
                       {
                         $Script:results += $result
                       }
