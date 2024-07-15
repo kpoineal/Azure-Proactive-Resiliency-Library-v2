@@ -50,8 +50,8 @@ The Collector PowerShell script is the first script to be run in the Azure Proac
       - **TenantID**:  *Optional* ; tenant to be used.
       - **SubscriptionIds**:  *Required (or ConfigFile)* ; Specifies Subscription(s) to be included in the analysis: /subscriptions/YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY,/subscriptions/AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA.
       - **RunbookFile**:  *Optional* ; specifies the file with the runbook (selectors & checks) to be used.
-      - **ResourceGroups**:  *Optional* ; specifies Resource Group(s) to be included in the analysis: /subscriptions/YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY/resourceGroups/ResourceGroup1,/subscriptions/YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY/resourceGroups/ResourceGroup2.
-      - **Tags**:  *Optional* ; specifies tags to be used for filtering the resources: TagName1||TagName2||TagNameN==TagValue1||TagValue2, TagName1==TagValue1.
+      - **ResourceGroups**:  *Optional*; specifies Resource Group(s) to be included in the analysis: /subscriptions/YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY/resourceGroups/ResourceGroup1,/subscriptions/YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY/resourceGroups/ResourceGroup2.
+      - **Tags**:  *Optional* ; specifies tags to be used for filtering the resources: TagName1==TagValue1,TagName2==TagValue2, TagName3==TagValue3.
       - **ConfigFile**:  *Optional* ; specifies a file for advanced filtering, including: subscription, resourceGroup, resourceId, Tags.
       - **AzureEnvironment**:  *Optional* ; specifies the Azure Environment to used for the analysis: AzureCloud, AzureUSGovernment.
       - **SAP**:  *Optional* ; used for specialized workload analysis.
@@ -62,7 +62,7 @@ The Collector PowerShell script is the first script to be run in the Azure Proac
 
     {{< figure src="../../img/tools/collector-3.png" width="100%" >}}
 
-1. Select "A" to allow modules to install
+2. Select "A" to allow modules to install
   {{< figure src="../../img/tools/collector-4.png" width="100%" >}}
 
 1. After Script completes, download the results
