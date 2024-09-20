@@ -1,4 +1,4 @@
-import-module powershell-yaml -force -scope Local
+install-module powershell-yaml -force -scope currentuser
 
 function Build-APRLJsonObject {
   param (
