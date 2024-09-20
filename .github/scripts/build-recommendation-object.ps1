@@ -1,4 +1,4 @@
-import-module powershell-yaml -force -scope CurrentUser
+import-module powershell-yaml -force -scope Local
 
 function Build-APRLJsonObject {
   param (
@@ -29,7 +29,7 @@ function Build-APRLJsonObject {
 }
 
 try{
-  Build-APRLJsonObject -path "./azure-resources" | ConvertTo-Json -Depth 10 | Out-File -FilePath "./tools/data/recommendations.json" -Force
+  Build-APRLJsonObject -path "./azure-resources" | ConvertTo-Json -Depth 10 | Out-File -FilePath "../tools/data/recommendations.json" -Force
   exit 0
 }
 catch{
